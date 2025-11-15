@@ -15,6 +15,7 @@ import {
 } from "./ui/sidebar";
 import { Home as HomeIcon, ListTodo, Plus, Menu, Sun, Sunset, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import SplitText from "./SplitText";
 
 function MenuButtonWithExpand({
   tooltip,
@@ -129,13 +130,23 @@ function Home() {
           <div className="flex-1" />
         </header>
         <div className="flex flex-1 flex-col p-4">
-          <div className="pt-8 text-center">
-            <div className="flex items-center justify-center gap-3">
-              <GreetingIcon className="size-6" />
-              <h1 className="text-xl font-extralight">
-                {greeting.text}, Tino
-              </h1>
-            </div>
+          <div className="pt-8 pl-4">
+            <SplitText
+              text={`${greeting.text}, Tino`}
+              tag="h1"
+              className="text-2xl! font-extralight"
+              textAlign="left"
+              animateOnce={true}
+              animationKey="greeting-animated"
+            >
+              <GreetingIcon className="size-5" />
+            </SplitText>
+          </div>
+          <div className="flex justify-center mt-auto pb-8">
+              <button className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium">
+              <Plus className="size-5" />
+              <span>Create new task</span>
+            </button>
           </div>
         </div>
       </SidebarInset>
