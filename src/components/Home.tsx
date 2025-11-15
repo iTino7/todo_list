@@ -7,15 +7,16 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   useSidebar,
 } from "./ui/sidebar";
-import { Home as HomeIcon, ListTodo, Plus, Menu, Sun, Sunset, Moon } from "lucide-react";
+import { Home as HomeIcon, Plus, Sun, CloudSun, Moon, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SplitText from "./SplitText";
+import { Calendar } from "./ui/calendar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
 function MenuButtonWithExpand({
   tooltip,
@@ -63,15 +64,36 @@ function MenuButtonWithExpand({
   );
 }
 
+function ToggleSidebarButton() {
+  const { open, setOpen } = useSidebar();
+
+  const handleClick = () => {
+    setOpen(!open);
+  };
+
+  return (
+    <div 
+      className="absolute right-0 top-8 -translate-y-1/2 translate-x-1/2 z-20 cursor-pointer"
+      onClick={handleClick}
+    >
+      <div className="bg-white rounded-full p-2 shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors">
+        <Maximize2 className="size-4 text-gray-700" />
+      </div>
+    </div>
+  );
+}
+
 function Home() {
   const [activeItem, setActiveItem] = useState<"home" | "new-list">("home");
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 13) {
       return { text: "Buongiorno", icon: Sun };
     } else if (hour >= 13 && hour < 18) {
-      return { text: "Buon pomeriggio", icon: Sunset };
+      return { text: "Buon pomeriggio", icon: CloudSun };
     } else {
       return { text: "Buona sera", icon: Moon };
     }
@@ -80,16 +102,24 @@ function Home() {
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
 
+  const getFormattedDate = () => {
+    const today = new Date();
+    const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    
+    const dayName = days[today.getDay()];
+    const day = today.getDate();
+    const month = months[today.getMonth()];
+    const year = today.getFullYear();
+    
+    return `Oggi, ${dayName} ${day} ${month} ${year}`;
+  };
+
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-2">
-            <ListTodo className="size-6" />
-            <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">
-              Todo List
-            </span>
-          </div>
+      <Sidebar collapsible="icon" className="relative">
+        <ToggleSidebarButton />
+        <SidebarHeader className="py-6">
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu className="group-data-[collapsible=icon]:items-center mt-4">
@@ -123,14 +153,8 @@ function Home() {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="bg-transparent! hover:bg-transparent! active:bg-transparent! focus-visible:bg-transparent! border-0! hover:border-0! active:border-0! focus-visible:border-0! ring-0! hover:ring-0! active:ring-0! focus-visible:ring-0! outline-none!">
-            <Menu className="h-5 w-5" />
-          </SidebarTrigger>
-          <div className="flex-1" />
-        </header>
-        <div className="flex flex-1 flex-col p-4">
-          <div className="pt-8 pl-4">
+        <header className="flex h-auto shrink-0 items-center gap-2 pl-12 pr-4 py-4">
+          <div className="flex flex-col gap-1">
             <SplitText
               text={`${greeting.text}, Tino`}
               tag="h1"
@@ -141,15 +165,42 @@ function Home() {
             >
               <GreetingIcon className="size-5" />
             </SplitText>
+            <p className="text-sm text-muted-foreground ml-1">
+              {getFormattedDate()}
+            </p>
           </div>
+          <div className="flex-1" />
+        </header>
+        <div className="flex flex-1 flex-col p-4">
           <div className="flex justify-center mt-auto pb-8">
-              <button className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium">
+              <button 
+                onClick={() => setIsCalendarOpen(true)}
+                className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium"
+              >
               <Plus className="size-5" />
               <span>Create new task</span>
             </button>
           </div>
         </div>
       </SidebarInset>
+      <Sheet open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Seleziona una data</SheetTitle>
+          </SheetHeader>
+          <div className="flex justify-center mt-8">
+            <Calendar 
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return date < today;
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </SidebarProvider>
   );
 }
