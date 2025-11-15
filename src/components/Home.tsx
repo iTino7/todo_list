@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "./ui/sidebar";
-import { Home as HomeIcon, ListTodo, Settings, Menu } from "lucide-react";
+import { Home as HomeIcon, ListTodo, Plus, Menu, Sun, Sunset, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function MenuButtonWithExpand({
@@ -21,9 +21,11 @@ function MenuButtonWithExpand({
   children,
   className,
   isActive = false,
+  count,
   ...props
 }: React.ComponentProps<typeof SidebarMenuButton> & {
   isActive?: boolean;
+  count?: number;
 }) {
   const { state, setOpen } = useSidebar();
 
@@ -48,12 +50,34 @@ function MenuButtonWithExpand({
       {...props}
     >
       {children}
+      {count !== undefined && (
+        <span className={cn(
+          "ml-auto mr-2 bg-zinc-200 text-xs font-medium rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5",
+          isActive && "bg-sidebar"
+        )}>
+          {count}
+        </span>
+      )}
     </SidebarMenuButton>
   );
 }
 
 function Home() {
-  const [activeItem, setActiveItem] = useState<"home" | "settings">("home");
+  const [activeItem, setActiveItem] = useState<"home" | "new-list">("home");
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 13) {
+      return { text: "Buongiorno", icon: Sun };
+    } else if (hour >= 13 && hour < 18) {
+      return { text: "Buon pomeriggio", icon: Sunset };
+    } else {
+      return { text: "Buona sera", icon: Moon };
+    }
+  };
+
+  const greeting = getGreeting();
+  const GreetingIcon = greeting.icon;
 
   return (
     <SidebarProvider>
@@ -73,6 +97,7 @@ function Home() {
                 tooltip="Home" 
                 isActive={activeItem === "home"}
                 onClick={() => setActiveItem("home")}
+                count={1}
               >
                 <HomeIcon />
                 <span>Home</span>
@@ -80,12 +105,12 @@ function Home() {
             </SidebarMenuItem>
             <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
               <MenuButtonWithExpand 
-                tooltip="Impostazioni" 
-                isActive={activeItem === "settings"}
-                onClick={() => setActiveItem("settings")}
+                tooltip="Crea una nuova lista" 
+                isActive={activeItem === "new-list"}
+                onClick={() => setActiveItem("new-list")}
               >
-                <Settings />
-                <span>Impostazioni</span>
+                <Plus />
+                <span>Crea una nuova lista</span>
               </MenuButtonWithExpand>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -103,15 +128,13 @@ function Home() {
           </SidebarTrigger>
           <div className="flex-1" />
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-            <div className="max-w-4xl w-full text-center">
-              <h1 className="text-4xl font-bold mb-8">
-                Benvenuto nella Todo List
+        <div className="flex flex-1 flex-col p-4">
+          <div className="pt-8 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <GreetingIcon className="size-6" />
+              <h1 className="text-xl font-extralight">
+                {greeting.text}, Tino
               </h1>
-              <p className="text-muted-foreground text-lg">
-                Inizia a organizzare le tue attività
-              </p>
             </div>
           </div>
         </div>
