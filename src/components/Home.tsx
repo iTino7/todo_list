@@ -12,15 +12,123 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "./ui/sidebar";
-import { Home as HomeIcon, Plus, Sun, CloudSun, Moon, Maximize2 } from "lucide-react";
+import { Plus, Sun, CloudSun, Moon, Maximize2, Trash2, ArrowLeft, X, Clock, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SplitText from "./SplitText";
 import { Calendar, CalendarDayButton } from "./ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "./ui/dialog";
 import { ComboboxDemo } from "./ui/combox";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import EmojiPicker from "emoji-picker-react";
+
+// Utility functions
+const normalizeDate = (d: Date): Date => {
+  const normalized = new Date(d);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+const generateHours = (): string[] => {
+  const hours = [];
+  for (let i = 0; i < 24; i++) {
+    hours.push(i.toString().padStart(2, '0') + ':00');
+  }
+  return hours;
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 13) {
+    return { text: "Buongiorno", icon: Sun };
+  } else if (hour >= 13 && hour < 18) {
+    return { text: "Buon pomeriggio", icon: CloudSun };
+  } else {
+    return { text: "Buona sera", icon: Moon };
+  }
+};
+
+const getFormattedDate = (): string => {
+  const today = new Date();
+  const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+  const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  
+  const dayName = days[today.getDay()];
+  const day = today.getDate();
+  const month = months[today.getMonth()];
+  const year = today.getFullYear();
+  
+  return `Oggi, ${dayName} ${day} ${month} ${year}`;
+};
+
+// Handler functions
+const createHandleBackToCalendar = (
+  setShowHours: React.Dispatch<React.SetStateAction<boolean>>
+) => {
+  return () => {
+    setShowHours(false);
+  };
+};
+
+const createHandleDialogOpenChange = (
+  setIsCalendarOpen: React.Dispatch<React.SetStateAction<boolean>>,
+  setShowHours: React.Dispatch<React.SetStateAction<boolean>>
+) => {
+  return (open: boolean) => {
+    setIsCalendarOpen(open);
+    if (!open) {
+      // Quando il dialog viene chiuso, resetta alla vista iniziale
+      setShowHours(false);
+    }
+  };
+};
+
+const createHandleSaveList = (
+  listName: string,
+  setLists: React.Dispatch<React.SetStateAction<Array<{ value: string; label: string }>>>,
+  lists: Array<{ value: string; label: string }>,
+  setIsNewListDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
+  setListName: React.Dispatch<React.SetStateAction<string>>
+) => {
+  return () => {
+    if (listName.trim().length > 0) {
+      // Crea un nuovo ID univoco per la lista
+      const newListId = `lista-${Date.now()}`;
+      const newList = { 
+        value: newListId, 
+        label: listName.trim() 
+      };
+      // Aggiungi la nuova lista all'array
+      const updatedLists = [...lists, newList];
+      setLists(updatedLists);
+      // Salva in localStorage
+      localStorage.setItem('todo-lists', JSON.stringify(updatedLists));
+      // Chiudi il dialog e resetta il nome
+      setIsNewListDialogOpen(false);
+      setListName("");
+    }
+  };
+};
+
+const createHandleDeleteList = (
+  selectedListId: string | null,
+  lists: Array<{ value: string; label: string }>,
+  setLists: React.Dispatch<React.SetStateAction<Array<{ value: string; label: string }>>>,
+  setSelectedListId: React.Dispatch<React.SetStateAction<string | null>>,
+  setActiveItem: React.Dispatch<React.SetStateAction<string>>
+) => {
+  return () => {
+    if (selectedListId) {
+      const updatedLists = lists.filter(list => list.value !== selectedListId);
+      setLists(updatedLists);
+      // Salva in localStorage
+      localStorage.setItem('todo-lists', JSON.stringify(updatedLists));
+      // Resetta la selezione
+      setSelectedListId(null);
+      setActiveItem("");
+    }
+  };
+};
 
 function MenuButtonWithExpand({
   tooltip,
@@ -88,15 +196,16 @@ function ToggleSidebarButton() {
 }
 
 function Home() {
-  const [activeItem, setActiveItem] = useState<"home" | "new-list">("home");
+  const [activeItem, setActiveItem] = useState<string>("");
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
   const [listName, setListName] = useState("");
-  const [lists] = useState([
-    { value: "lista1", label: "Lista 1" },
-    { value: "lista2", label: "Lista 2" },
-    { value: "lista3", label: "Lista 3" },
-  ]);
+  const [lists, setLists] = useState<Array<{ value: string; label: string }>>(() => {
+    // Carica le liste da localStorage al caricamento
+    const savedLists = localStorage.getItem('todo-lists');
+    return savedLists ? JSON.parse(savedLists) : [];
+  });
   // Inizializza con la data odierna
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
     const today = new Date();
@@ -109,18 +218,28 @@ function Home() {
     return today;
   });
   const [showHours, setShowHours] = useState(false);
+  const [selectedHours, setSelectedHours] = useState<string[]>([]);
+  const [taskDescription, setTaskDescription] = useState("");
+  const [selectedListForTask, setSelectedListForTask] = useState<string>("");
+  const [tasks, setTasks] = useState<Array<{
+    id: string;
+    description: string;
+    date: string;
+    hours: string[];
+    listId: string;
+    completed?: boolean;
+  }>>(() => {
+    // Carica le task da localStorage al caricamento
+    const savedTasks = localStorage.getItem('todo-tasks');
+    return savedTasks ? JSON.parse(savedTasks) : [];
+  });
   const lastClickedDateRef = useRef<Date | null>(null);
   const clickTimeoutRef = useRef<number | null>(null);
 
+  // Create handlers using external functions
+  // Create handleDateSelect inline to avoid ref access during render warning
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      // Normalizza le date per il confronto (solo giorno, mese, anno)
-      const normalizeDate = (d: Date) => {
-        const normalized = new Date(d);
-        normalized.setHours(0, 0, 0, 0);
-        return normalized;
-      };
-      
       const normalizedDate = normalizeDate(date);
       const normalizedLast = lastClickedDateRef.current ? normalizeDate(lastClickedDateRef.current) : null;
       
@@ -159,52 +278,108 @@ function Home() {
     }
   };
 
-  const handleBackToCalendar = () => {
-    setShowHours(false);
-  };
+  const handleBackToCalendar = createHandleBackToCalendar(setShowHours);
 
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsCalendarOpen(open);
-    if (!open) {
-      // Quando il dialog viene chiuso, resetta alla vista iniziale
+  const handleDialogOpenChange = createHandleDialogOpenChange(
+    setIsCalendarOpen,
+    setShowHours
+  );
+
+  const handleSaveList = createHandleSaveList(
+    listName,
+    setLists,
+    lists,
+    setIsNewListDialogOpen,
+    setListName
+  );
+
+  const handleDeleteList = createHandleDeleteList(
+    selectedListId,
+    lists,
+    setLists,
+    setSelectedListId,
+    setActiveItem
+  );
+
+  const handleSaveTask = () => {
+    if (taskDescription.trim().length > 0 && selectedListForTask && selectedDate) {
+      // Crea un nuovo ID univoco per la task
+      const newTaskId = `task-${Date.now()}`;
+      const newTask = {
+        id: newTaskId,
+        description: taskDescription.trim(),
+        date: selectedDate.toISOString(),
+        hours: selectedHours,
+        listId: selectedListForTask,
+        completed: false
+      };
+      
+      // Aggiungi la nuova task
+      const updatedTasks = [...tasks, newTask];
+      setTasks(updatedTasks);
+      
+      // Salva in localStorage
+      localStorage.setItem('todo-tasks', JSON.stringify(updatedTasks));
+      
+      // Reset dei campi e chiudi il dialog
+      setTaskDescription("");
+      setSelectedHours([]);
+      setSelectedListForTask("");
+      setIsCalendarOpen(false);
       setShowHours(false);
     }
   };
 
-  const generateHours = () => {
-    const hours = [];
-    for (let i = 0; i < 24; i++) {
-      hours.push(i.toString().padStart(2, '0') + ':00');
-    }
-    return hours;
-  };
+  // Filtra le task per la lista selezionata
+  const tasksForSelectedList = selectedListId 
+    ? tasks.filter(task => task.listId === selectedListId)
+    : [];
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 13) {
-      return { text: "Buongiorno", icon: Sun };
-    } else if (hour >= 13 && hour < 18) {
-      return { text: "Buon pomeriggio", icon: CloudSun };
+  const [animatingTasks, setAnimatingTasks] = useState<Map<string, 'in' | 'out'>>(new Map());
+
+  const handleToggleTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    const newCompleted = !task?.completed;
+    
+    // Se si sta attivando (entrata)
+    if (newCompleted) {
+      setAnimatingTasks(prev => new Map(prev).set(taskId, 'in'));
+      const updatedTasks = tasks.map(t => 
+        t.id === taskId 
+          ? { ...t, completed: true }
+          : t
+      );
+      setTasks(updatedTasks);
+      localStorage.setItem('todo-tasks', JSON.stringify(updatedTasks));
+      setTimeout(() => {
+        setAnimatingTasks(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(taskId);
+          return newMap;
+        });
+      }, 300);
     } else {
-      return { text: "Buona sera", icon: Moon };
+      // Se si sta disattivando (uscita)
+      setAnimatingTasks(prev => new Map(prev).set(taskId, 'out'));
+      setTimeout(() => {
+        const updatedTasks = tasks.map(t => 
+          t.id === taskId 
+            ? { ...t, completed: false }
+            : t
+        );
+        setTasks(updatedTasks);
+        localStorage.setItem('todo-tasks', JSON.stringify(updatedTasks));
+        setAnimatingTasks(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(taskId);
+          return newMap;
+        });
+      }, 300);
     }
   };
 
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
-
-  const getFormattedDate = () => {
-    const today = new Date();
-    const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-    
-    const dayName = days[today.getDay()];
-    const day = today.getDate();
-    const month = months[today.getMonth()];
-    const year = today.getFullYear();
-    
-    return `Oggi, ${dayName} ${day} ${month} ${year}`;
-  };
 
   return (
     <SidebarProvider>
@@ -214,17 +389,20 @@ function Home() {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu className="group-data-[collapsible=icon]:items-center mt-4">
-            <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-              <MenuButtonWithExpand 
-                tooltip="Home" 
-                isActive={activeItem === "home"}
-                onClick={() => setActiveItem("home")}
-                count={1}
-              >
-                <HomeIcon />
-                <span>Home</span>
-              </MenuButtonWithExpand>
-            </SidebarMenuItem>
+            {lists.map((list) => (
+              <SidebarMenuItem key={list.value} className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+                <MenuButtonWithExpand 
+                  tooltip={list.label}
+                  isActive={activeItem === list.value}
+                  onClick={() => {
+                    setActiveItem(list.value);
+                    setSelectedListId(list.value);
+                  }}
+                >
+                  <span>{list.label}</span>
+                </MenuButtonWithExpand>
+              </SidebarMenuItem>
+            ))}
             <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
               <MenuButtonWithExpand 
                 tooltip="Crea una nuova lista" 
@@ -259,15 +437,77 @@ function Home() {
             <p className="text-sm text-muted-foreground ml-1">
               {getFormattedDate()}
             </p>
+            {selectedListId && (
+              <h2 className="text-lg font-extralight mt-2">
+                {lists.find(l => l.value === selectedListId)?.label || 'Lista'}
+              </h2>
+            )}
           </div>
           <div className="flex-1" />
         </header>
-        <div className="flex flex-1 flex-col p-4">
-          <div className="flex justify-center mt-auto pb-8">
-              <button 
-                onClick={() => setIsCalendarOpen(true)}
-                className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium"
+        <div className="flex flex-1 flex-col p-4 relative">
+          {selectedListId && (
+            <>
+              {tasksForSelectedList.length > 0 ? (
+                <div className="flex flex-1 flex-col gap-2 overflow-y-auto max-w-2xl mx-auto w-full">
+                  {tasksForSelectedList.map((task) => {
+                    return (
+                      <div key={task.id} className="flex items-center gap-2 p-2.5 bg-white rounded-lg">
+                        <input
+                          type="checkbox"
+                          checked={task.completed || false}
+                          onChange={() => handleToggleTask(task.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer"
+                        />
+                        <div className="flex-1 flex items-center gap-2">
+                          <span className="text-sm font-medium relative inline-block">
+                            {task.description}
+                            {(task.completed || animatingTasks.has(task.id)) && (
+                              <div 
+                                className={`absolute top-1/2 h-px bg-current opacity-60 ${
+                                  animatingTasks.get(task.id) === 'out'
+                                    ? 'right-0 animate-[strike-out_0.3s_ease-in-out_forwards]'
+                                    : 'left-0 animate-[strike-in_0.3s_ease-in-out_forwards]'
+                                }`}
+                                style={{ width: task.completed && !animatingTasks.has(task.id) ? '100%' : undefined }}
+                              />
+                            )}
+                          </span>
+                        </div>
+                        {task.hours && task.hours.length > 0 && (
+                          <div className="flex items-center gap-0 text-xs text-muted-foreground">
+                            <Clock className="size-3 mr-1" />
+                            <span>{task.hours.length === 2 ? `${task.hours[0]} - ${task.hours[1]}` : task.hours[0]}</span>
+                          </div>
+                        )}
+                        <button className="p-1 bg-transparent! border-0! hover:bg-transparent! focus:bg-transparent! active:bg-transparent! outline-none! shadow-none!">
+                          <MoreVertical className="size-4 text-muted-foreground" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Contenuto della lista</p>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={handleDeleteList}
+                className="absolute bottom-8 left-4 p-2 text-destructive border-0! hover:border-0! focus-visible:border-0! active:border-0! outline-none! ring-0! hover:ring-0! focus-visible:ring-0! shadow-none!"
+                title="Elimina lista"
               >
+                <Trash2 className="size-4" />
+              </button>
+            </>
+          )}
+          <div className="flex justify-center mt-auto pb-8">
+            <button 
+              onClick={() => setIsCalendarOpen(true)}
+              className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium"
+            >
               <Plus className="size-5" />
               <span>Create new task</span>
             </button>
@@ -275,54 +515,120 @@ function Home() {
         </div>
       </SidebarInset>
       <Dialog open={isCalendarOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle className="text-center">
-              {showHours ? "Seleziona un'ora" : "Seleziona una data"}
+            <DialogTitle className="flex items-center justify-between">
+              {showHours ? (
+                <>
+                  <button
+                    onClick={handleBackToCalendar}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ArrowLeft className="size-5" />
+                  </button>
+                  <span className="flex-1 text-center">Seleziona un'ora</span>
+                  <DialogClose className="p-1 hover:bg-gray-100 rounded-full transition-colors opacity-70 hover:opacity-100">
+                    <X className="size-5" />
+                    <span className="sr-only">Close</span>
+                  </DialogClose>
+                </>
+              ) : (
+                <>
+                  <div className="flex-1 text-center">Seleziona una data</div>
+                  <DialogClose className="p-1 hover:bg-gray-100 rounded-full transition-colors opacity-70 hover:opacity-100">
+                    <X className="size-5" />
+                    <span className="sr-only">Close</span>
+                  </DialogClose>
+                </>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="flex justify-center mt-8 relative min-h-[400px]">
             {showHours ? (
               <div className="w-full animate-in fade-in duration-300">
-                <div className="w-full max-w-md mx-auto">
-                  <div className="flex items-center mb-4">
-                    <button
-                      onClick={handleBackToCalendar}
-                      className="text-sm text-muted-foreground transition-colors border border-transparent"
-                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#000000'}
-                      onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
-                    >
-Torna al calendario
-                    </button>
-                    {selectedDate && (
-                      <div className="ml-auto text-sm font-medium">
-                        {selectedDate.toLocaleDateString('it-IT', { 
-                          weekday: 'short', 
-                          day: 'numeric', 
-                          month: 'short', 
-                          year: 'numeric' 
-                        })}
+                <div className="w-full max-w-lg mx-auto">
+                  {selectedDate && (
+                    <div className="w-full mb-4 relative">
+                      <Input
+                        className="w-full pr-32 py-2 text-sm"
+                        placeholder="Aggiungi una task"
+                        style={{ backgroundColor: '#e8e8e8', border: 'none' }}
+                        value={taskDescription}
+                        onChange={(e) => setTaskDescription(e.target.value)}
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                        <span className={`text-xs font-medium text-muted-foreground bg-white rounded-full px-2 py-0.5 transition-all duration-700 ${selectedHours.length > 0 ? 'animate-in slide-in-from-right-2' : ''}`}>
+                          {selectedDate.toLocaleDateString('it-IT', { 
+                            day: 'numeric', 
+                            month: 'short',
+                            ...(selectedDate.getFullYear() > new Date().getFullYear() && { year: 'numeric' })
+                          })}
+                        </span>
+                        {selectedHours.length === 2 ? (
+                          <span className="text-xs font-medium text-muted-foreground bg-white rounded-full px-2 py-0.5 animate-in slide-in-from-left-2 fade-in duration-700">
+                            {selectedHours[0]} - {selectedHours[1]}
+                          </span>
+                        ) : (
+                          selectedHours.map((hour, index) => (
+                            <span key={index} className="text-xs font-medium text-muted-foreground bg-white rounded-full px-2 py-0.5 animate-in slide-in-from-left-2 fade-in duration-700">
+                              {hour}
+                            </span>
+                          ))
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="w-full mb-4">
-                    <ComboboxDemo items={lists} />
+                    <ComboboxDemo 
+                      items={lists} 
+                      value={selectedListForTask}
+                      onValueChange={setSelectedListForTask}
+                    />
                   </div>
-                  <div className="grid grid-cols-6 gap-2 w-full">
+                  <div className="grid grid-cols-6 gap-2 w-full mb-6">
                     {generateHours().map((hour, index) => (
                       <button
                         key={index}
-                        className="aspect-square flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-all active:scale-95 text-sm font-medium"
-                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#000000'}
-                        onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+                        className={`aspect-square flex items-center justify-center rounded-md border transition-all active:scale-95 text-sm font-medium ${
+                          selectedHours.includes(hour)
+                            ? 'border-black bg-background text-foreground'
+                            : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
+                        }`}
+                        onMouseEnter={(e) => {
+                          if (!selectedHours.includes(hour)) {
+                            e.currentTarget.style.borderColor = '#000000';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!selectedHours.includes(hour)) {
+                            e.currentTarget.style.borderColor = '';
+                          }
+                        }}
                         onClick={() => {
-                          // Qui puoi gestire la selezione dell'ora
-                          console.log(`Selected hour: ${hour} for date: ${selectedDate}`);
+                          if (selectedHours.includes(hour)) {
+                            // Se l'orario è già selezionato, rimuovilo
+                            setSelectedHours(selectedHours.filter(h => h !== hour));
+                          } else if (selectedHours.length < 2) {
+                            // Se ci sono meno di 2 orari, aggiungilo
+                            setSelectedHours([...selectedHours, hour]);
+                          } else {
+                            // Se ci sono già 2 orari, sostituisci il primo con il nuovo
+                            setSelectedHours([selectedHours[1], hour]);
+                          }
                         }}
                       >
                         {hour}
                       </button>
                     ))}
+                  </div>
+                  <div className="flex justify-center mt-auto">
+                    <Button
+                      onClick={handleSaveTask}
+                      disabled={taskDescription.trim().length === 0 || !selectedListForTask}
+                      className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! font-medium disabled:bg-gray-300! disabled:text-gray-500! disabled:cursor-not-allowed disabled:hover:bg-gray-300!"
+                    >
+                      Salva
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -351,12 +657,6 @@ Torna al calendario
                       const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
                         // Se la data è già selezionata e clicchi di nuovo, mostra le ore
                         if (modifiers.selected && selectedDate) {
-                          const normalizeDate = (d: Date) => {
-                            const normalized = new Date(d);
-                            normalized.setHours(0, 0, 0, 0);
-                            return normalized;
-                          };
-                          
                           const normalizedDay = normalizeDate(day.date);
                           const normalizedSelected = normalizeDate(selectedDate);
                           
@@ -447,13 +747,8 @@ Torna al calendario
                 />
               </div>
               <div className="flex justify-center mt-6">
-                <Button
-                  onClick={() => {
-                    // Qui puoi gestire il salvataggio della lista
-                    console.log('Salva lista:', listName);
-                    setIsNewListDialogOpen(false);
-                    setListName("");
-                  }}
+                  <Button
+                    onClick={handleSaveList}
                   disabled={listName.trim().length === 0}
                   className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! font-medium disabled:bg-gray-300! disabled:text-gray-500! disabled:cursor-not-allowed disabled:hover:bg-gray-300!"
                 >

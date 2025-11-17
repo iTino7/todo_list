@@ -80,6 +80,24 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+@keyframes strike-in {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes strike-out {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
 .dark {
   --background: oklch(0.205 0 0);
   --foreground: oklch(0.985 0 0);
