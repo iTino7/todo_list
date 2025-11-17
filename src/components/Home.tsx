@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,8 +15,8 @@ import {
 import { Home as HomeIcon, Plus, Sun, CloudSun, Moon, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SplitText from "./SplitText";
-import { Calendar } from "./ui/calendar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { Calendar, CalendarDayButton } from "./ui/calendar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 function MenuButtonWithExpand({
   tooltip,
@@ -86,7 +86,79 @@ function ToggleSidebarButton() {
 function Home() {
   const [activeItem, setActiveItem] = useState<"home" | "new-list">("home");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  // Inizializza con la data odierna
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+  const [showHours, setShowHours] = useState(false);
+  const lastClickedDateRef = useRef<Date | null>(null);
+  const clickTimeoutRef = useRef<number | null>(null);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      // Normalizza le date per il confronto (solo giorno, mese, anno)
+      const normalizeDate = (d: Date) => {
+        const normalized = new Date(d);
+        normalized.setHours(0, 0, 0, 0);
+        return normalized;
+      };
+      
+      const normalizedDate = normalizeDate(date);
+      const normalizedLast = lastClickedDateRef.current ? normalizeDate(lastClickedDateRef.current) : null;
+      
+      // Controlla se è un doppio click sulla stessa data
+      if (normalizedLast && normalizedLast.getTime() === normalizedDate.getTime()) {
+        // Doppio click - mostra le ore
+        if (clickTimeoutRef.current) {
+          clearTimeout(clickTimeoutRef.current);
+          clickTimeoutRef.current = null;
+        }
+        setShowHours(true);
+        lastClickedDateRef.current = null;
+        return; // Non aggiornare selectedDate
+      } else {
+        // Primo click - seleziona la data
+        setSelectedDate(date);
+        setShowHours(false);
+        lastClickedDateRef.current = date;
+        
+        // Reset del timeout dopo un certo tempo
+        if (clickTimeoutRef.current) {
+          clearTimeout(clickTimeoutRef.current);
+        }
+        clickTimeoutRef.current = setTimeout(() => {
+          lastClickedDateRef.current = null;
+        }, 300); // 300ms per considerare un doppio click
+      }
+    } else {
+      setSelectedDate(date);
+      setShowHours(false);
+      lastClickedDateRef.current = null;
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+        clickTimeoutRef.current = null;
+      }
+    }
+  };
+
+  const handleBackToCalendar = () => {
+    setShowHours(false);
+  };
+
+  const generateHours = () => {
+    const hours = [];
+    for (let i = 0; i < 24; i++) {
+      hours.push(i.toString().padStart(2, '0') + ':00');
+    }
+    return hours;
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -183,24 +255,121 @@ function Home() {
           </div>
         </div>
       </SidebarInset>
-      <Sheet open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Seleziona una data</SheetTitle>
-          </SheetHeader>
-          <div className="flex justify-center mt-8">
-            <Calendar 
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              disabled={(date) => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                return date < today;
-              }}
-            />
+      <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {showHours ? "Seleziona un'ora" : "Seleziona una data"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center mt-8 relative min-h-[400px]">
+            {showHours ? (
+              <div className="w-full animate-in fade-in duration-300">
+                <div className="w-full max-w-md mx-auto">
+                  <div className="flex items-center mb-4">
+                    <button
+                      onClick={handleBackToCalendar}
+                      className="text-sm text-muted-foreground transition-colors border border-transparent"
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#000000'}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                    >
+Torna al calendario
+                    </button>
+                    {selectedDate && (
+                      <div className="ml-auto text-sm font-medium">
+                        {selectedDate.toLocaleDateString('it-IT', { 
+                          weekday: 'short', 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-6 gap-2 w-full">
+                    {generateHours().map((hour, index) => (
+                      <button
+                        key={index}
+                        className="aspect-square flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-all active:scale-95 text-sm font-medium"
+                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#000000'}
+                        onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+                        onClick={() => {
+                          // Qui puoi gestire la selezione dell'ora
+                          console.log(`Selected hour: ${hour} for date: ${selectedDate}`);
+                        }}
+                      >
+                        {hour}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="animate-in fade-in duration-300">
+                <Calendar 
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    // Disabilita date passate
+                    if (date < today) return true;
+                    // Disabilita date fuori dal mese visualizzato
+                    const dateMonth = date.getMonth();
+                    const dateYear = date.getFullYear();
+                    const currentMonthValue = currentMonth.getMonth();
+                    const currentYear = currentMonth.getFullYear();
+                    return dateMonth !== currentMonthValue || dateYear !== currentYear;
+                  }}
+                  components={{
+                    DayButton: ({ day, modifiers, ...props }) => {
+                      const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                        // Se la data è già selezionata e clicchi di nuovo, mostra le ore
+                        if (modifiers.selected && selectedDate) {
+                          const normalizeDate = (d: Date) => {
+                            const normalized = new Date(d);
+                            normalized.setHours(0, 0, 0, 0);
+                            return normalized;
+                          };
+                          
+                          const normalizedDay = normalizeDate(day.date);
+                          const normalizedSelected = normalizeDate(selectedDate);
+                          
+                          if (normalizedDay.getTime() === normalizedSelected.getTime()) {
+                            e.preventDefault();
+                            setShowHours(true);
+                            return;
+                          }
+                        }
+                        // Altrimenti, chiama l'handler normale
+                        props.onClick?.(e);
+                      };
+                      
+                      return (
+                        <CalendarDayButton
+                          day={day}
+                          modifiers={modifiers}
+                          {...props}
+                          onClick={handleClick}
+                          onDoubleClick={(e) => {
+                            e.preventDefault();
+                            if (modifiers.selected && selectedDate) {
+                              setShowHours(true);
+                            }
+                          }}
+                        />
+                      );
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
