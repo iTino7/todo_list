@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import SplitText from "./SplitText";
 import { Calendar, CalendarDayButton } from "./ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { ComboboxDemo } from "./ui/combox";
 
 function MenuButtonWithExpand({
   tooltip,
@@ -86,6 +87,11 @@ function ToggleSidebarButton() {
 function Home() {
   const [activeItem, setActiveItem] = useState<"home" | "new-list">("home");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [lists] = useState([
+    { value: "lista1", label: "Lista 1" },
+    { value: "lista2", label: "Lista 2" },
+    { value: "lista3", label: "Lista 3" },
+  ]);
   // Inizializza con la data odierna
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
     const today = new Date();
@@ -266,6 +272,9 @@ function Home() {
             {showHours ? (
               <div className="w-full animate-in fade-in duration-300">
                 <div className="w-full max-w-md mx-auto">
+                  <div className="w-full mb-4">
+                    <ComboboxDemo items={lists} />
+                  </div>
                   <div className="flex items-center mb-4">
                     <button
                       onClick={handleBackToCalendar}
