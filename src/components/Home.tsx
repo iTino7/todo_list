@@ -18,6 +18,9 @@ import SplitText from "./SplitText";
 import { Calendar, CalendarDayButton } from "./ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ComboboxDemo } from "./ui/combox";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import EmojiPicker from "emoji-picker-react";
 
 function MenuButtonWithExpand({
   tooltip,
@@ -87,6 +90,8 @@ function ToggleSidebarButton() {
 function Home() {
   const [activeItem, setActiveItem] = useState<"home" | "new-list">("home");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
+  const [listName, setListName] = useState("");
   const [lists] = useState([
     { value: "lista1", label: "Lista 1" },
     { value: "lista2", label: "Lista 2" },
@@ -158,6 +163,14 @@ function Home() {
     setShowHours(false);
   };
 
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsCalendarOpen(open);
+    if (!open) {
+      // Quando il dialog viene chiuso, resetta alla vista iniziale
+      setShowHours(false);
+    }
+  };
+
   const generateHours = () => {
     const hours = [];
     for (let i = 0; i < 24; i++) {
@@ -216,7 +229,7 @@ function Home() {
               <MenuButtonWithExpand 
                 tooltip="Crea una nuova lista" 
                 isActive={activeItem === "new-list"}
-                onClick={() => setActiveItem("new-list")}
+                onClick={() => setIsNewListDialogOpen(true)}
               >
                 <Plus />
                 <span>Crea una nuova lista</span>
@@ -261,7 +274,7 @@ function Home() {
           </div>
         </div>
       </SidebarInset>
-      <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+      <Dialog open={isCalendarOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-center">
@@ -272,9 +285,6 @@ function Home() {
             {showHours ? (
               <div className="w-full animate-in fade-in duration-300">
                 <div className="w-full max-w-md mx-auto">
-                  <div className="w-full mb-4">
-                    <ComboboxDemo items={lists} />
-                  </div>
                   <div className="flex items-center mb-4">
                     <button
                       onClick={handleBackToCalendar}
@@ -294,6 +304,9 @@ Torna al calendario
                         })}
                       </div>
                     )}
+                  </div>
+                  <div className="w-full mb-4">
+                    <ComboboxDemo items={lists} />
                   </div>
                   <div className="grid grid-cols-6 gap-2 w-full">
                     {generateHours().map((hour, index) => (
@@ -376,6 +389,78 @@ Torna al calendario
                 />
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isNewListDialogOpen} onOpenChange={setIsNewListDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              Crea una nuova lista
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center mt-4 relative min-h-[200px]">
+            <div className="w-full max-w-md">
+              <Input 
+                placeholder="Aggiungi il nome della lista" 
+                style={{ backgroundColor: '#f6f6f6', border: 'none', paddingTop: '12px', paddingBottom: '12px' }}
+                className="border-0 py-3"
+                value={listName}
+                onChange={(e) => setListName(e.target.value)}
+              />
+              <div className="mt-4 w-full" style={{ maxHeight: '400px', overflow: 'auto' }}>
+                <style>{`
+                  .epr-emoji-category-label,
+                  .epr-category-nav {
+                    display: none !important;
+                  }
+                  .epr-frequently-used,
+                  .epr-frequently-used-section {
+                    margin-bottom: 20px !important;
+                    padding-bottom: 20px !important;
+                    border-bottom: 1px solid #e5e5e5 !important;
+                  }
+                  .epr-main,
+                  .epr-emoji-category-label,
+                  .epr-body,
+                  .epr-emoji-category,
+                  .epr-search-container {
+                    border: none !important;
+                    background-color: transparent !important;
+                  }
+                  .epr-main {
+                    background-color: var(--background) !important;
+                  }
+                `}</style>
+                <EmojiPicker 
+                  onEmojiClick={(emojiData) => {
+                    setListName(prev => prev + emojiData.emoji);
+                  }}
+                  searchDisabled={false}
+                  skinTonesDisabled={true}
+                  previewConfig={{
+                    showPreview: false
+                  }}
+                  width="100%"
+                  height={400}
+                  lazyLoadEmojis={true}
+                />
+              </div>
+              <div className="flex justify-center mt-6">
+                <Button
+                  onClick={() => {
+                    // Qui puoi gestire il salvataggio della lista
+                    console.log('Salva lista:', listName);
+                    setIsNewListDialogOpen(false);
+                    setListName("");
+                  }}
+                  disabled={listName.trim().length === 0}
+                  className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! font-medium disabled:bg-gray-300! disabled:text-gray-500! disabled:cursor-not-allowed disabled:hover:bg-gray-300!"
+                >
+                  Salva
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
