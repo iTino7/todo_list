@@ -790,7 +790,7 @@ function Home() {
                             // Se ci sono meno di 2 orari, aggiungilo
                             setSelectedHours([...selectedHours, hour]);
                           } else {
-                            // Se ci sono già 2 orari, sostituisci il primo con il nuovo
+                            // Se ci sono già 2 orari, rimuovi il primo e aggiungi il nuovo
                             setSelectedHours([selectedHours[1], hour]);
                           }
                         }}

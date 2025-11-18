@@ -52,7 +52,7 @@ export function ComboboxDemo({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between bg-transparent! hover:bg-transparent! active:bg-transparent! focus:bg-transparent!"
           onMouseEnter={(e) => e.currentTarget.style.borderColor = '#000000'}
           onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
         >
