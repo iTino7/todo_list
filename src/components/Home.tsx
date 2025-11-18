@@ -18,7 +18,6 @@ import { Plus, Sun, CloudSun, Moon, Maximize2, Trash2, ArrowLeft, X, Clock } fro
 import { cn } from "@/lib/utils";
 import SplitText from "./SplitText";
 import BlurText from "./BlurText";
-import TextType from "./TextType";
 import { Calendar, CalendarDayButton } from "./ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription, DialogFooter } from "./ui/dialog";
 import { ComboboxDemo } from "./ui/combox";
@@ -233,8 +232,6 @@ function ToggleSidebarButton() {
 
 function Home() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [showNameInput, setShowNameInput] = useState(false);
-  const [userName, setUserName] = useState("");
   const [activeItem, setActiveItem] = useState<string>("");
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -464,15 +461,7 @@ function Home() {
     // Aspetta 1.5 secondi dopo che l'animazione è completa prima di nascondere
     setTimeout(() => {
       setShowWelcome(false);
-      setShowNameInput(true);
     }, 1500);
-  };
-
-  const handleNameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (userName.trim().length > 0) {
-      setShowNameInput(false);
-    }
   };
 
   return (
@@ -493,40 +482,6 @@ function Home() {
               direction="top"
               onAnimationComplete={handleBlurTextComplete}
             />
-          </motion.div>
-        ) : showNameInput ? (
-          <motion.div
-            key="name-input"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="flex flex-col items-center justify-center min-h-screen w-full fixed inset-0 bg-background z-50 gap-8"
-          >
-            <TextType
-              text="Scrivi il tuo nome"
-              className="text-4xl font-extralight"
-              typingSpeed={50}
-              loop={false}
-              showCursor={true}
-            />
-            <form onSubmit={handleNameSubmit} className="flex flex-col items-center gap-4 w-full max-w-md px-4">
-              <Input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Il tuo nome"
-                className="text-center text-lg py-6"
-                autoFocus
-              />
-              <Button
-                type="submit"
-                disabled={userName.trim().length === 0}
-                className="bg-black! text-white px-8! py-3 rounded-3xl! border-0! hover:border-0! font-medium disabled:bg-gray-300! disabled:text-gray-500! disabled:cursor-not-allowed"
-              >
-                Continua
-              </Button>
-            </form>
           </motion.div>
         ) : (
           <motion.div
@@ -581,7 +536,7 @@ function Home() {
           <div className="flex flex-col gap-1 w-full md:w-auto">
             <div className="w-full flex justify-center md:justify-start">
               <SplitText
-                text={`${greeting.text}, ${userName || 'Tino'}`}
+                text={greeting.text}
                 tag="h1"
                 className="text-2xl! font-extralight text-center md:text-left"
                 textAlign="center"
@@ -622,7 +577,7 @@ function Home() {
                                 type="checkbox"
                                 checked={task.completed || false}
                                 onChange={() => handleToggleTask(task.id)}
-                                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer"
+                                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer bg-transparent! [&:checked]:bg-black! [&:checked]:border-black!"
                               />
                               <div className="flex-1 flex items-center gap-2">
                                 <span className="text-sm font-medium relative inline-block">
