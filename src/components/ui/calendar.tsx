@@ -200,13 +200,17 @@ function CalendarDayButton({
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
+      data-today={modifiers.today}
       disabled={modifiers.disabled}
       className={cn(
         "inline-flex items-center justify-center cursor-pointer active:scale-95 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 border border-transparent",
-        // Rimuovi hover
-        "hover:bg-transparent! hover:text-inherit!",
-        // Stili per data selezionata (nero)
-        "data-[selected-single=true]:bg-black! data-[selected-single=true]:text-white!",
+        // Rimuovi background di default e hover
+        "bg-transparent! hover:bg-transparent! active:bg-transparent!",
+        // Stili per data odierna (nero) - solo se non è selezionata
+        modifiers.today && !modifiers.selected && "bg-black! text-white!",
+        // Stili per data selezionata (nero) - solo se selezionata
+        modifiers.selected && "bg-black! text-white!",
+        // Stili per range
         "data-[range-start=true]:bg-black! data-[range-start=true]:text-white!",
         "data-[range-end=true]:bg-black! data-[range-end=true]:text-white!",
         // Stili per range middle

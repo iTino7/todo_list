@@ -674,7 +674,7 @@ function Home() {
             {selectedListId && (
               <button
                 onClick={() => setIsDeleteListDialogOpen(true)}
-                className="p-2 text-destructive border-0! hover:border-0! focus-visible:border-0! active:border-0! outline-none! ring-0! hover:ring-0! focus-visible:ring-0! shadow-none!"
+                className="p-2 text-destructive border-0! hover:border-0! focus-visible:border-0! active:border-0! outline-none! ring-0! hover:ring-0! focus-visible:ring-0! shadow-none! bg-transparent! hover:bg-transparent! active:bg-transparent! focus:bg-transparent!"
                 title="Elimina lista"
               >
                 <Trash2 className="size-4" />
@@ -874,7 +874,7 @@ function Home() {
         </DialogContent>
       </Dialog>
       <Dialog open={isNewListDialogOpen} onOpenChange={setIsNewListDialogOpen}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle className="text-center">
               Crea una nuova lista
