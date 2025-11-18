@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,15 +13,18 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "./ui/sidebar";
-import { Plus, Sun, CloudSun, Moon, Maximize2, Trash2, ArrowLeft, X, Clock, MoreVertical } from "lucide-react";
+import { Plus, Sun, CloudSun, Moon, Maximize2, Trash2, ArrowLeft, X, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SplitText from "./SplitText";
+import BlurText from "./BlurText";
+import TextType from "./TextType";
 import { Calendar, CalendarDayButton } from "./ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription, DialogFooter } from "./ui/dialog";
 import { ComboboxDemo } from "./ui/combox";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import EmojiPicker from "emoji-picker-react";
+import { toast } from "sonner";
 
 // Utility functions
 const normalizeDate = (d: Date): Date => {
@@ -59,6 +63,37 @@ const getFormattedDate = (): string => {
   const year = today.getFullYear();
   
   return `Oggi, ${dayName} ${day} ${month} ${year}`;
+};
+
+const formatTaskDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const taskDate = new Date(date);
+  taskDate.setHours(0, 0, 0, 0);
+  
+  const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+  const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  
+  const dayName = days[taskDate.getDay()];
+  const day = taskDate.getDate();
+  const month = months[taskDate.getMonth()];
+  const year = taskDate.getFullYear();
+  
+  // Se è oggi
+  if (taskDate.getTime() === today.getTime()) {
+    return 'Oggi';
+  }
+  
+  // Se è domani
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (taskDate.getTime() === tomorrow.getTime()) {
+    return `Domani, ${dayName} ${day} ${month}${year !== today.getFullYear() ? ` ${year}` : ''}`;
+  }
+  
+  // Altrimenti mostra la data completa
+  return `${dayName}, ${day} ${month}${year !== today.getFullYear() ? ` ${year}` : ''}`;
 };
 
 // Handler functions
@@ -196,10 +231,16 @@ function ToggleSidebarButton() {
 }
 
 function Home() {
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [userName, setUserName] = useState("");
   const [activeItem, setActiveItem] = useState<string>("");
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
+  const [isDeleteListDialogOpen, setIsDeleteListDialogOpen] = useState(false);
+  const [isDeleteTaskDialogOpen, setIsDeleteTaskDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [listName, setListName] = useState("");
   const [lists, setLists] = useState<Array<{ value: string; label: string }>>(() => {
     // Carica le liste da localStorage al caricamento
@@ -335,6 +376,34 @@ function Home() {
     ? tasks.filter(task => task.listId === selectedListId)
     : [];
 
+  // Raggruppa le task per giorno
+  const tasksByDate = tasksForSelectedList.reduce((acc, task) => {
+    const taskDate = new Date(task.date);
+    taskDate.setHours(0, 0, 0, 0);
+    const dateKey = taskDate.toISOString();
+    
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(task);
+    return acc;
+  }, {} as Record<string, typeof tasksForSelectedList>);
+
+  // Ordina le date (oggi prima, poi cronologicamente)
+  const sortedDates = Object.keys(tasksByDate).sort((a, b) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateA = new Date(a);
+    const dateB = new Date(b);
+    
+    // Se una è oggi, mettila prima
+    if (dateA.getTime() === today.getTime()) return -1;
+    if (dateB.getTime() === today.getTime()) return 1;
+    
+    // Altrimenti ordina cronologicamente
+    return dateA.getTime() - dateB.getTime();
+  });
+
   const [animatingTasks, setAnimatingTasks] = useState<Map<string, 'in' | 'out'>>(new Map());
 
   const handleToggleTask = (taskId: string) => {
@@ -378,11 +447,95 @@ function Home() {
     }
   };
 
+  const handleDeleteTask = () => {
+    if (taskToDelete) {
+      const updatedTasks = tasks.filter(t => t.id !== taskToDelete);
+      setTasks(updatedTasks);
+      localStorage.setItem('todo-tasks', JSON.stringify(updatedTasks));
+      setTaskToDelete(null);
+    }
+  };
+
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
 
+  const handleBlurTextComplete = () => {
+    // Aspetta 1.5 secondi dopo che l'animazione è completa prima di nascondere
+    setTimeout(() => {
+      setShowWelcome(false);
+      setShowNameInput(true);
+    }, 1500);
+  };
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userName.trim().length > 0) {
+      setShowNameInput(false);
+    }
+  };
+
   return (
-    <SidebarProvider>
+    <>
+      <AnimatePresence mode="wait">
+        {showWelcome ? (
+          <motion.div
+            key="welcome"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="flex items-center justify-center min-h-screen w-full fixed inset-0 bg-background z-50"
+          >
+            <BlurText
+              text="Benvenuto"
+              className="text-6xl font-extralight"
+              animateBy="words"
+              direction="top"
+              onAnimationComplete={handleBlurTextComplete}
+            />
+          </motion.div>
+        ) : showNameInput ? (
+          <motion.div
+            key="name-input"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="flex flex-col items-center justify-center min-h-screen w-full fixed inset-0 bg-background z-50 gap-8"
+          >
+            <TextType
+              text="Scrivi il tuo nome"
+              className="text-4xl font-extralight"
+              typingSpeed={50}
+              loop={false}
+              showCursor={true}
+            />
+            <form onSubmit={handleNameSubmit} className="flex flex-col items-center gap-4 w-full max-w-md px-4">
+              <Input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="Il tuo nome"
+                className="text-center text-lg py-6"
+                autoFocus
+              />
+              <Button
+                type="submit"
+                disabled={userName.trim().length === 0}
+                className="bg-black! text-white px-8! py-3 rounded-3xl! border-0! hover:border-0! font-medium disabled:bg-gray-300! disabled:text-gray-500! disabled:cursor-not-allowed"
+              >
+                Continua
+              </Button>
+            </form>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="todo-list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="w-full"
+          >
+            <SidebarProvider>
       <Sidebar collapsible="icon" className="relative">
         <ToggleSidebarButton />
         <SidebarHeader className="py-6">
@@ -425,7 +578,7 @@ function Home() {
         <header className="flex h-auto shrink-0 items-center gap-2 pl-12 pr-4 py-4">
           <div className="flex flex-col gap-1">
             <SplitText
-              text={`${greeting.text}, Tino`}
+              text={`${greeting.text}, ${userName || 'Tino'}`}
               tag="h1"
               className="text-2xl! font-extralight"
               textAlign="left"
@@ -450,39 +603,56 @@ function Home() {
             <>
               {tasksForSelectedList.length > 0 ? (
                 <div className="flex flex-1 flex-col gap-2 overflow-y-auto max-w-2xl mx-auto w-full">
-                  {tasksForSelectedList.map((task) => {
+                  {sortedDates.map((dateKey) => {
+                    const dateTasks = tasksByDate[dateKey];
+                    
                     return (
-                      <div key={task.id} className="flex items-center gap-2 p-2.5 bg-white rounded-lg">
-                        <input
-                          type="checkbox"
-                          checked={task.completed || false}
-                          onChange={() => handleToggleTask(task.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer"
-                        />
-                        <div className="flex-1 flex items-center gap-2">
-                          <span className="text-sm font-medium relative inline-block">
-                            {task.description}
-                            {(task.completed || animatingTasks.has(task.id)) && (
-                              <div 
-                                className={`absolute top-1/2 h-px bg-current opacity-60 ${
-                                  animatingTasks.get(task.id) === 'out'
-                                    ? 'right-0 animate-[strike-out_0.3s_ease-in-out_forwards]'
-                                    : 'left-0 animate-[strike-in_0.3s_ease-in-out_forwards]'
-                                }`}
-                                style={{ width: task.completed && !animatingTasks.has(task.id) ? '100%' : undefined }}
-                              />
-                            )}
-                          </span>
+                      <div key={dateKey} className="flex flex-col gap-2">
+                        <div className="text-xs text-muted-foreground font-medium mt-2 mb-1 px-1">
+                          {formatTaskDate(dateKey)}
                         </div>
-                        {task.hours && task.hours.length > 0 && (
-                          <div className="flex items-center gap-0 text-xs text-muted-foreground">
-                            <Clock className="size-3 mr-1" />
-                            <span>{task.hours.length === 2 ? `${task.hours[0]} - ${task.hours[1]}` : task.hours[0]}</span>
-                          </div>
-                        )}
-                        <button className="p-1 bg-transparent! border-0! hover:bg-transparent! focus:bg-transparent! active:bg-transparent! outline-none! shadow-none!">
-                          <MoreVertical className="size-4 text-muted-foreground" />
-                        </button>
+                        {dateTasks.map((task) => {
+                          return (
+                            <div key={task.id} className="flex items-center gap-2 p-2.5 bg-white rounded-lg">
+                              <input
+                                type="checkbox"
+                                checked={task.completed || false}
+                                onChange={() => handleToggleTask(task.id)}
+                                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer"
+                              />
+                              <div className="flex-1 flex items-center gap-2">
+                                <span className="text-sm font-medium relative inline-block">
+                                  {task.description}
+                                  {(task.completed || animatingTasks.has(task.id)) && (
+                                    <div 
+                                      className={`absolute top-1/2 h-px bg-current opacity-60 ${
+                                        animatingTasks.get(task.id) === 'out'
+                                          ? 'right-0 animate-[strike-out_0.3s_ease-in-out_forwards]'
+                                          : 'left-0 animate-[strike-in_0.3s_ease-in-out_forwards]'
+                                      }`}
+                                      style={{ width: task.completed && !animatingTasks.has(task.id) ? '100%' : undefined }}
+                                    />
+                                  )}
+                                </span>
+                              </div>
+                              {task.hours && task.hours.length > 0 && (
+                                <div className="flex items-center gap-0 text-xs text-muted-foreground">
+                                  <Clock className="size-3 mr-1" />
+                                  <span>{task.hours.length === 2 ? `${task.hours[0]} - ${task.hours[1]}` : task.hours[0]}</span>
+                                </div>
+                              )}
+                              <button 
+                                onClick={() => {
+                                  setTaskToDelete(task.id);
+                                  setIsDeleteTaskDialogOpen(true);
+                                }}
+                                className="p-1 bg-transparent! border-0! hover:bg-transparent! focus:bg-transparent! active:bg-transparent! outline-none! shadow-none! cursor-pointer"
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -495,7 +665,7 @@ function Home() {
                 </div>
               )}
               <button
-                onClick={handleDeleteList}
+                onClick={() => setIsDeleteListDialogOpen(true)}
                 className="absolute bottom-8 left-4 p-2 text-destructive border-0! hover:border-0! focus-visible:border-0! active:border-0! outline-none! ring-0! hover:ring-0! focus-visible:ring-0! shadow-none!"
                 title="Elimina lista"
               >
@@ -759,7 +929,114 @@ function Home() {
           </div>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+      <Dialog open={isDeleteListDialogOpen} onOpenChange={setIsDeleteListDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              Elimina lista
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Sei sicuro di voler eliminare questa lista? Questa azione non può essere annullata.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 justify-center sm:justify-center">
+            <Button
+              onClick={() => setIsDeleteListDialogOpen(false)}
+              className="bg-gray-200! text-gray-800 px-8! py-2 rounded-3xl! border-0! hover:border-0! font-medium hover:bg-gray-300!"
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                // Ottieni il nome della lista prima di eliminarla
+                const listName = lists.find(l => l.value === selectedListId)?.label || 'Lista';
+                handleDeleteList();
+                setIsDeleteListDialogOpen(false);
+                // Mostra il toast con l'orario
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('it-IT', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                });
+                toast.success(
+                  <div className="flex flex-col">
+                    <div>La lista {listName} è stata eliminata</div>
+                    <div className="text-xs text-gray-500 mt-1 self-start">{timeString}</div>
+                  </div>,
+                  {
+                    className: 'border-green-500 border-2',
+                    style: {
+                      border: '2px solid rgb(34, 197, 94)',
+                    },
+                  }
+                );
+              }}
+              className="bg-destructive! text-white px-8! py-2 rounded-3xl! border-0! hover:border-0! font-medium hover:bg-destructive/90!"
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isDeleteTaskDialogOpen} onOpenChange={setIsDeleteTaskDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              Elimina task
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Sei sicuro di voler eliminare questa task?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 justify-center sm:justify-center">
+            <Button
+              onClick={() => {
+                setIsDeleteTaskDialogOpen(false);
+                setTaskToDelete(null);
+              }}
+              className="bg-gray-200! text-gray-800 px-8! py-2 rounded-3xl! border-0! hover:border-0! font-medium hover:bg-gray-300!"
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                // Ottieni la descrizione della task prima di eliminarla
+                const taskDescription = tasks.find(t => t.id === taskToDelete)?.description || 'Task';
+                handleDeleteTask();
+                setIsDeleteTaskDialogOpen(false);
+                // Mostra il toast con l'orario
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('it-IT', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                });
+                toast.success(
+                  <div className="flex flex-col">
+                    <div>La task {taskDescription} è stata eliminata</div>
+                    <div className="text-xs text-gray-500 mt-1 self-start">{timeString}</div>
+                  </div>,
+                  {
+                    className: 'border-green-500 border-2',
+                    style: {
+                      border: '2px solid rgb(34, 197, 94)',
+                    },
+                  }
+                );
+              }}
+              className="bg-destructive! text-white px-8! py-2 rounded-3xl! border-0! hover:border-0! font-medium hover:bg-destructive/90!"
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+            </SidebarProvider>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
