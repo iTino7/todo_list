@@ -577,7 +577,11 @@ function Home() {
                                 type="checkbox"
                                 checked={task.completed || false}
                                 onChange={() => handleToggleTask(task.id)}
-                                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer bg-transparent! [&:checked]:bg-black! [&:checked]:border-black!"
+                                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-0 cursor-pointer"
+                                style={{ 
+                                  accentColor: task.completed ? '#000000' : 'transparent',
+                                  backgroundColor: task.completed ? '#000000' : 'transparent'
+                                }}
                               />
                               <div className="flex-1 flex items-center gap-2">
                                 <span className="text-sm font-medium relative inline-block">
@@ -738,16 +742,18 @@ function Home() {
                           }
                         }}
                         onClick={() => {
-                          if (selectedHours.includes(hour)) {
-                            // Se l'orario è già selezionato, rimuovilo
-                            setSelectedHours(selectedHours.filter(h => h !== hour));
-                          } else if (selectedHours.length < 2) {
-                            // Se ci sono meno di 2 orari, aggiungilo
-                            setSelectedHours([...selectedHours, hour]);
-                          } else {
-                            // Se ci sono già 2 orari, rimuovi il primo e aggiungi il nuovo
-                            setSelectedHours([selectedHours[1], hour]);
-                          }
+                          setSelectedHours(prev => {
+                            if (prev.includes(hour)) {
+                              // Se l'orario è già selezionato, rimuovilo
+                              return prev.filter(h => h !== hour);
+                            } else if (prev.length < 2) {
+                              // Se ci sono meno di 2 orari, aggiungilo
+                              return [...prev, hour];
+                            } else {
+                              // Se ci sono già 2 orari, rimuovi il primo e aggiungi il nuovo
+                              return [prev[1], hour];
+                            }
+                          });
                         }}
                       >
                         {hour}
@@ -896,7 +902,7 @@ function Home() {
         </DialogContent>
       </Dialog>
       <Dialog open={isDeleteListDialogOpen} onOpenChange={setIsDeleteListDialogOpen}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle className="text-center">
               Elimina lista
@@ -946,7 +952,7 @@ function Home() {
         </DialogContent>
       </Dialog>
       <Dialog open={isDeleteTaskDialogOpen} onOpenChange={setIsDeleteTaskDialogOpen}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle className="text-center">
               Elimina task
