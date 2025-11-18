@@ -700,12 +700,12 @@ function Home() {
                 <>
                   <button
                     onClick={handleBackToCalendar}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-1 bg-transparent! hover:bg-transparent! active:bg-transparent! focus:bg-transparent! rounded-full transition-colors"
                   >
                     <ArrowLeft className="size-5" />
                   </button>
                   <span className="flex-1 text-center">Seleziona un'ora</span>
-                  <DialogClose className="p-1 hover:bg-gray-100 rounded-full transition-colors opacity-70 hover:opacity-100">
+                  <DialogClose className="p-1 bg-transparent! hover:bg-transparent! active:bg-transparent! focus:bg-transparent! rounded-full transition-colors opacity-70 hover:opacity-100">
                     <X className="size-5" />
                     <span className="sr-only">Close</span>
                   </DialogClose>
@@ -713,7 +713,7 @@ function Home() {
               ) : (
                 <>
                   <div className="flex-1 text-center">Seleziona una data</div>
-                  <DialogClose className="p-1 hover:bg-gray-100 rounded-full transition-colors opacity-70 hover:opacity-100">
+                  <DialogClose className="p-1 bg-transparent! hover:bg-transparent! active:bg-transparent! focus:bg-transparent! rounded-full transition-colors opacity-70 hover:opacity-100">
                     <X className="size-5" />
                     <span className="sr-only">Close</span>
                   </DialogClose>
@@ -769,8 +769,8 @@ function Home() {
                         key={index}
                         className={`aspect-square flex items-center justify-center rounded-md border transition-all active:scale-95 text-sm font-medium ${
                           selectedHours.includes(hour)
-                            ? 'border-black bg-background text-foreground'
-                            : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
+                            ? 'border-black bg-transparent! text-foreground'
+                            : 'border-input bg-transparent! hover:bg-transparent!'
                         }`}
                         onMouseEnter={(e) => {
                           if (!selectedHours.includes(hour)) {

@@ -206,9 +206,7 @@ function CalendarDayButton({
         "inline-flex items-center justify-center cursor-pointer active:scale-95 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 border border-transparent",
         // Rimuovi background di default e hover
         "bg-transparent! hover:bg-transparent! active:bg-transparent!",
-        // Stili per data odierna (nero) - solo se non è selezionata
-        modifiers.today && !modifiers.selected && "bg-black! text-white!",
-        // Stili per data selezionata (nero) - solo se selezionata
+        // Stili per data selezionata (nero) - solo se selezionata (anche se è oggi)
         modifiers.selected && "bg-black! text-white!",
         // Stili per range
         "data-[range-start=true]:bg-black! data-[range-start=true]:text-white!",
