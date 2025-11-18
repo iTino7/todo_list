@@ -577,7 +577,7 @@ function Home() {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-auto shrink-0 items-center gap-2 pl-4 md:pl-12 pr-4 py-4">
-          <SidebarTrigger className="md:hidden" />
+          <SidebarTrigger className="md:hidden bg-transparent! hover:bg-transparent! active:bg-transparent! focus:bg-transparent!" />
           <div className="flex flex-col gap-1 w-full md:w-auto">
             <div className="w-full flex justify-center md:justify-start">
               <SplitText
