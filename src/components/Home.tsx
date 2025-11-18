@@ -11,6 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarTrigger,
   useSidebar,
 } from "./ui/sidebar";
 import { Plus, Sun, CloudSun, Moon, Maximize2, Trash2, ArrowLeft, X, Clock } from "lucide-react";
@@ -569,29 +570,32 @@ function Home() {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <div className="px-2 py-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+          <div className="px-2 py-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden text-center">
             Versione 1.0.0
           </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-auto shrink-0 items-center gap-2 pl-12 pr-4 py-4">
-          <div className="flex flex-col gap-1">
-            <SplitText
-              text={`${greeting.text}, ${userName || 'Tino'}`}
-              tag="h1"
-              className="text-2xl! font-extralight"
-              textAlign="left"
-              animateOnce={true}
-              animationKey="greeting-animated"
-            >
-              <GreetingIcon className="size-5" />
-            </SplitText>
-            <p className="text-sm text-muted-foreground ml-1">
+        <header className="flex h-auto shrink-0 items-center gap-2 pl-4 md:pl-12 pr-4 py-4">
+          <SidebarTrigger className="md:hidden" />
+          <div className="flex flex-col gap-1 w-full md:w-auto">
+            <div className="w-full flex justify-center md:justify-start">
+              <SplitText
+                text={`${greeting.text}, ${userName || 'Tino'}`}
+                tag="h1"
+                className="text-2xl! font-extralight text-center md:text-left"
+                textAlign="center"
+                animateOnce={true}
+                animationKey="greeting-animated"
+              >
+                <GreetingIcon className="size-5" />
+              </SplitText>
+            </div>
+            <p className="text-sm text-muted-foreground text-center md:text-left md:ml-1">
               {getFormattedDate()}
             </p>
             {selectedListId && (
-              <h2 className="text-lg font-extralight mt-2">
+              <h2 className="text-lg font-extralight mt-2 text-center md:text-left">
                 {lists.find(l => l.value === selectedListId)?.label || 'Lista'}
               </h2>
             )}
@@ -664,28 +668,32 @@ function Home() {
                   </div>
                 </div>
               )}
+            </>
+          )}
+          <div className="flex justify-between items-center mt-auto pb-8 relative">
+            {selectedListId && (
               <button
                 onClick={() => setIsDeleteListDialogOpen(true)}
-                className="absolute bottom-8 left-4 p-2 text-destructive border-0! hover:border-0! focus-visible:border-0! active:border-0! outline-none! ring-0! hover:ring-0! focus-visible:ring-0! shadow-none!"
+                className="p-2 text-destructive border-0! hover:border-0! focus-visible:border-0! active:border-0! outline-none! ring-0! hover:ring-0! focus-visible:ring-0! shadow-none!"
                 title="Elimina lista"
               >
                 <Trash2 className="size-4" />
               </button>
-            </>
-          )}
-          <div className="flex justify-center mt-auto pb-8">
+            )}
+            {!selectedListId && <div></div>}
             <button 
               onClick={() => setIsCalendarOpen(true)}
-              className="bg-black! text-white px-28! py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium"
+              className="bg-black! text-white px-6 md:px-28! py-2 md:py-3 rounded-3xl! border-0! hover:border-0! flex items-center gap-2 font-medium text-sm md:text-base absolute left-1/2 -translate-x-1/2 whitespace-nowrap"
             >
-              <Plus className="size-5" />
+              <Plus className="size-4 md:size-5" />
               <span>Create new task</span>
             </button>
+            <div></div>
           </div>
         </div>
       </SidebarInset>
       <Dialog open={isCalendarOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent showCloseButton={false}>
+        <DialogContent showCloseButton={false} className="max-h-[90vh] overflow-y-auto w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] md:max-w-lg p-4 md:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               {showHours ? (
@@ -713,10 +721,10 @@ function Home() {
               )}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex justify-center mt-8 relative min-h-[400px]">
+          <div className="flex justify-center mt-4 md:mt-8 relative min-h-[300px] md:min-h-[400px] max-h-[calc(100vh-200px)] overflow-y-auto">
             {showHours ? (
               <div className="w-full animate-in fade-in duration-300">
-                <div className="w-full max-w-lg mx-auto">
+                <div className="w-full max-w-lg mx-auto px-2 md:px-2">
                   {selectedDate && (
                     <div className="w-full mb-4 relative">
                       <Input
@@ -803,13 +811,15 @@ function Home() {
                 </div>
               </div>
             ) : (
-              <div className="animate-in fade-in duration-300">
-                <Calendar 
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
+              <div className="animate-in fade-in duration-300 w-full">
+                <div className="w-full mx-auto px-1 md:px-2">
+                  <Calendar 
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    month={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    className="w-full [&_.rdp-month]:w-full [&_.rdp-table]:w-full [&_.rdp-cell]:w-[calc(100%/7)] [&_.rdp-button]:text-xs md:[&_.rdp-button]:text-sm"
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -857,6 +867,7 @@ function Home() {
                     }
                   }}
                 />
+                </div>
               </div>
             )}
           </div>
